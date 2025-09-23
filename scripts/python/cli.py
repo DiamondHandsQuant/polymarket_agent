@@ -17,13 +17,18 @@ polymarket_rag = PolymarketRAG()
 @app.command()
 def get_all_markets(limit: int = 5, sort_by: str = "spread") -> None:
     """
-    Query Polymarket's markets
+    Query Polymarket's current active markets
     """
     print(f"limit: int = {limit}, sort_by: str = {sort_by}")
-    markets = polymarket.get_all_markets()
+    markets = polymarket.get_all_markets()  # Now returns current markets by default
     markets = polymarket.filter_markets_for_trading(markets)
     if sort_by == "spread":
         markets = sorted(markets, key=lambda x: x.spread, reverse=True)
+    elif sort_by == "volume":
+        markets = sorted(markets, key=lambda x: x.volume, reverse=True)
+    elif sort_by == "created":
+        # Markets are already sorted by creation date from the API
+        pass
     markets = markets[:limit]
     pprint(markets)
 
@@ -35,6 +40,27 @@ def get_relevant_news(keywords: str) -> None:
     """
     articles = newsapi_client.get_articles_for_cli_keywords(keywords)
     pprint(articles)
+
+
+@app.command()
+def get_current_markets(limit: int = 5) -> None:
+    """
+    Get the most recently created active markets
+    """
+    from agents.polymarket.gamma import GammaMarketClient
+    gamma = GammaMarketClient()
+    
+    print(f"Fetching {limit} most recent active markets...")
+    markets = gamma.get_current_markets(limit=limit)
+    
+    print(f"\n🔥 {len(markets)} Current Active Markets:")
+    for i, market in enumerate(markets):
+        print(f"\n{i+1}. {market.get('question', 'No question')}")
+        print(f"   Created: {market.get('createdAt', 'Unknown')[:10]}")
+        print(f"   Active: {market.get('active', 'N/A')}")
+        volume = market.get('volume', 0)
+        if volume:
+            print(f"   Volume: ${float(volume):,.2f}")
 
 
 @app.command()

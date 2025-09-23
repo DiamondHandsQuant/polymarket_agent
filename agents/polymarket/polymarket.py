@@ -188,7 +188,16 @@ class Polymarket:
 
     def get_all_markets(self) -> "list[SimpleMarket]":
         markets = []
-        res = httpx.get(self.gamma_markets_endpoint)
+        # Add parameters to get current, active markets sorted by creation date
+        params = {
+            "active": True,
+            "closed": False,
+            "archived": False,
+            "order": "createdAt",
+            "ascending": False,
+            "limit": 50  # Reasonable limit for current markets
+        }
+        res = httpx.get(self.gamma_markets_endpoint, params=params)
         if res.status_code == 200:
             for market in res.json():
                 try:

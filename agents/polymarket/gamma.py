@@ -130,6 +130,8 @@ class GammaMarketClient:
                 "closed": False,
                 "archived": False,
                 "limit": limit,
+                "order": "createdAt",
+                "ascending": False,
             }
         )
 
@@ -143,6 +145,8 @@ class GammaMarketClient:
                 "archived": False,
                 "limit": limit,
                 "offset": offset,
+                "order": "createdAt",
+                "ascending": False,
             }
             market_batch = self.get_markets(querystring_params=params)
             all_markets.extend(market_batch)

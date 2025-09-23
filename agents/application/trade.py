@@ -37,13 +37,27 @@ class Trader:
         try:
             self.pre_trade_logic()
 
-            events = self.polymarket.get_all_tradeable_events()
-            print(f"1. FOUND {len(events)} EVENTS")
+            # Use current markets instead of stale events
+            current_markets = self.gamma.get_current_markets(limit=50)
+            print(f"1. FOUND {len(current_markets)} CURRENT MARKETS")
+
+            # Convert to events format for compatibility with existing RAG system
+            events = []
+            for market in current_markets:
+                # Create a simple event-like object from market data
+                event_data = {
+                    'question': market.get('question', ''),
+                    'description': market.get('description', ''),
+                    'market_id': market.get('id', ''),
+                    'active': market.get('active', False)
+                }
+                events.append(event_data)
 
             filtered_events = self.agent.filter_events_with_rag(events)
             print(f"2. FILTERED {len(filtered_events)} EVENTS")
 
-            markets = self.agent.map_filtered_events_to_markets(filtered_events)
+            # Since we already have markets, use them directly
+            markets = current_markets
             print()
             print(f"3. FOUND {len(markets)} MARKETS")
 
