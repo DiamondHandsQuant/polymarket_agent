@@ -24,23 +24,51 @@ class Creator:
             current_markets = self.gamma.get_current_markets(limit=50)
             print(f"1. FOUND {len(current_markets)} CURRENT MARKETS")
 
-            # Convert to events format for compatibility with existing RAG system
+            # Convert to SimpleEvent objects for compatibility with existing RAG system
+            from agents.utils.objects import SimpleEvent
             events = []
-            for market in current_markets:
-                # Create a simple event-like object from market data
-                event_data = {
-                    'question': market.get('question', ''),
-                    'description': market.get('description', ''),
-                    'market_id': market.get('id', ''),
-                    'active': market.get('active', False)
-                }
-                events.append(event_data)
+            for i, market in enumerate(current_markets):
+                # Create proper SimpleEvent objects from market data
+                event = SimpleEvent(
+                    id=market.get('id', i),
+                    ticker=market.get('ticker', f"MARKET_{i}"),
+                    slug=market.get('slug', f"market-{i}"),
+                    title=market.get('question', 'Unknown Market'),
+                    description=market.get('description', market.get('question', 'No description')),
+                    end=market.get('endDate', market.get('end_date_iso', '2025-12-31')),
+                    active=market.get('active', True),
+                    closed=market.get('closed', False),
+                    archived=market.get('archived', False),
+                    restricted=market.get('restricted', False),
+                    new=market.get('new', False),
+                    featured=market.get('featured', False),
+                    markets=str(market.get('id', i))  # Store market ID as string
+                )
+                events.append(event)
 
             filtered_events = self.agent.filter_events_with_rag(events)
             print(f"2. FILTERED {len(filtered_events)} EVENTS")
 
-            # Since we already have markets, use them directly
-            markets = current_markets
+            # Map filtered events back to markets (since we already have current_markets)
+            if filtered_events:
+                # Extract market IDs from filtered events
+                filtered_market_ids = []
+                for event_tuple in filtered_events:
+                    if hasattr(event_tuple[0], 'metadata') and 'markets' in event_tuple[0].metadata:
+                        market_id = event_tuple[0].metadata['markets']
+                        filtered_market_ids.append(market_id)
+                    elif hasattr(event_tuple[0], 'markets'):
+                        market_id = event_tuple[0].markets
+                        filtered_market_ids.append(market_id)
+                
+                # Filter current_markets to only include the RAG-selected ones
+                markets = [m for m in current_markets if str(m.get('id', '')) in filtered_market_ids]
+                if not markets:
+                    # Fallback: use first few current markets if filtering failed
+                    markets = current_markets[:5]
+            else:
+                # Fallback: use first few current markets if no events were filtered
+                markets = current_markets[:5]
             print()
             print(f"3. FOUND {len(markets)} MARKETS")
 

@@ -157,10 +157,28 @@ class Executor:
     def source_best_trade(self, market_object) -> str:
         market_document = market_object[0].dict()
         market = market_document["metadata"]
-        outcome_prices = ast.literal_eval(market["outcome_prices"])
-        outcomes = ast.literal_eval(market["outcomes"])
-        question = market["question"]
-        description = market_document["page_content"]
+        
+        # Handle missing or malformed outcome_prices and outcomes
+        try:
+            outcome_prices_str = market.get("outcome_prices", "[]")
+            if outcome_prices_str and outcome_prices_str != "[]":
+                outcome_prices = ast.literal_eval(outcome_prices_str)
+            else:
+                outcome_prices = [0.5, 0.5]  # Default binary market prices
+        except (ValueError, SyntaxError):
+            outcome_prices = [0.5, 0.5]  # Fallback to default prices
+            
+        try:
+            outcomes_str = market.get("outcomes", "[]")
+            if outcomes_str and outcomes_str != "[]":
+                outcomes = ast.literal_eval(outcomes_str)
+            else:
+                outcomes = ["Yes", "No"]  # Default binary outcomes
+        except (ValueError, SyntaxError):
+            outcomes = ["Yes", "No"]  # Fallback to default outcomes
+            
+        question = market.get("question", "Unknown market")
+        description = market_document.get("page_content", question)
 
         prompt = self.prompter.superforecaster(question, description, outcomes)
         print()

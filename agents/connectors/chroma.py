@@ -95,17 +95,27 @@ class PolymarketRAG:
         if not os.path.isdir(local_events_directory):
             os.mkdir(local_events_directory)
         local_file_path = f"{local_events_directory}/markets.json"
+        
+        # Convert markets to dictionaries (handle both SimpleMarket objects and raw dicts)
+        dict_markets = []
+        for market in markets:
+            if hasattr(market, 'dict'):
+                dict_markets.append(market.dict())
+            else:
+                dict_markets.append(market)
+        
         with open(local_file_path, "w+") as output_file:
-            json.dump(markets, output_file)
+            json.dump(dict_markets, output_file)
 
         # create vector db
         def metadata_func(record: dict, metadata: dict) -> dict:
 
             metadata["id"] = record.get("id")
-            metadata["outcomes"] = record.get("outcomes")
-            metadata["outcome_prices"] = record.get("outcome_prices")
+            # Handle both camelCase and snake_case field names
+            metadata["outcomes"] = record.get("outcomes") or record.get("outcome") or "[]"
+            metadata["outcome_prices"] = record.get("outcome_prices") or record.get("outcomePrices") or "[]"
             metadata["question"] = record.get("question")
-            metadata["clob_token_ids"] = record.get("clob_token_ids")
+            metadata["clob_token_ids"] = record.get("clob_token_ids") or record.get("clobTokenIds")
 
             return metadata
 
