@@ -41,3 +41,15 @@
 ## Notes
 - Stateless apart from cache; all tunables are config-driven.
 - We will log category assignments and cache hits for observability.
+
+---
+Maintainer comment:
+- Implemented `agents/strategies/selection.py` with LLM-only classification (cached) and Gamma metrics (volume/spread/mid). Prompts added in `agents/application/prompts.py`.
+- Dry-run verified categories populate (e.g., crypto) and cache persists to `local_state/category_cache.json`.
+- Subgraph path removed as requested; no optional imports remain.
+- Commits: selection helper a10d8f2, LLM integration 8e8aefe, optionality removal f1c17fd → final LLM-only ad05afb; issue update 1216dda.
+
+---
+Closed:
+- Date: 2025-09-24
+- Commits: a10d8f2, 8e8aefe, f1c17fd, ad05afb, 1216dda
