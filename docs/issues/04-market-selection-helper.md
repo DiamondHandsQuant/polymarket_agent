@@ -1,25 +1,43 @@
 # Issue 4: Market selection helper
 
 ## Background (reuse existing code)
-- Use `agents/polymarket/gamma.py` (`GammaMarketClient.get_current_markets`, etc.).
-- Do not alter existing Gamma client.
+- Use `agents/polymarket/gamma.py` (`GammaMarketClient.get_current_markets`, etc.) for market discovery and numeric filters (volume/spread/mid).
+- Prefer LLM-based classification for categories (uses existing `Executor`/OpenAI plumbing and new prompts in `agents/application/prompts.py`).
+- Subgraph enrichment optional later; not required for initial delivery.
 
 ## Scope
-- Add a helper under `agents/strategies/` (e.g., `selection.py`) to fetch and filter markets:
-  - Inputs: min 24h volume, max spread (cents), mid band [low, high], exclude tags, limit N
-  - Output: list of market dicts/objects ready for quoting
+- Add `agents/strategies/selection.py` to fetch, classify, and filter markets:
+  - Inputs: min 24h volume, max spread (cents), mid band [low, high], limit N
+  - Classification: primary = LLM (categories: politics, crypto, sports, finance, tech, science, entertainment, other)
+  - Output: list of market dicts with `category` and computed `mid`, sorted and limited
+  - Implement caching to avoid repeated LLM calls
 
 ## Tasks
-- Implement functions to:
-  - Fetch recent active markets via `GammaMarketClient`
-  - Compute mid from `outcomePrices` when present
-  - Filter by spread and mid band, handle missing data safely
-  - Sort by volume (fallback to volumeClob/volume24hr if present)
+- Implement functions:
+  - `compute_mid_price(mkt) -> float|None`, `get_volume(mkt) -> float`, `get_spread_cents(mkt) -> float|None`
+  - `classify_market_llm(mkt) -> category` using prompts: `classify_market_category` (single) or `classify_markets_batch` (batch)
+  - `market_passes_filters(mkt, cfg) -> bool`
+  - `select_markets(cfg) -> list[mkt_with_category]` (fetch via Gamma + classify + filter + sort + limit)
+- Add on-disk cache: `local_state/category_cache.json` with TTL; never call LLM if cache hit and fresh
+- Sort by `volume` then fallbacks (volume24hr/volumeClob) as available
+
+## Config keys (under each bot's market_selection)
+- `source: llm` (options: `llm`, `gamma_only`, `subgraph_only` in future)
+- `min_volume_24h: int`
+- `max_spread_cents: int`
+- `mid_price_band: [float, float]`
+- `limit: int`
+- `cache_path: local_state/category_cache.json`
+- `cache_ttl_hours: 24`
+- `llm_model: gpt-4o-mini` (or use default in `Executor`)
+- (Optional later) `subgraph_url` if we enable enrichment
 
 ## Acceptance Criteria
-- Returns at most N markets meeting filters; never throws on missing fields.
-- Pure helper; no network logic beyond Gamma client calls.
-- Unit-light: simple self-check/logs for missing fields.
+- Returns at most N markets; never throws on missing fields.
+- Each returned market includes `category` (LLM-derived) and computed `mid` (float).
+- Respects numeric filters; avoids LLM calls when cache is valid.
+- Batch classification path works and falls back to single-item classification on errors; invalid JSON yields `other`.
 
 ## Notes
-- Keep as simple functions; avoid adding new classes.
+- Stateless apart from cache; all tunables are config-driven.
+- We will log category assignments and cache hits for observability.

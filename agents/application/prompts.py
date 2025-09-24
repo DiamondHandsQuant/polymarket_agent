@@ -159,7 +159,7 @@ class Prompter:
                 Your adaptability is your greatest asset, enabling you to thrive in a rapidly changing environment. You leverage cutting-edge technology and tools to gain an edge over other traders, constantly seeking innovative ways to enhance your strategies.
                 In your journey on Polymarket, you are committed to continuous learning, staying informed about the latest trends and developments in various sectors. Your emotional intelligence empowers you to remain composed under pressure, making rational decisions even when the stakes are high.
                 Visualize yourself consistently achieving outstanding returns, earning recognition as the top trader on Polymarket. You inspire others with your success, setting new standards of excellence in the world of information markets.
-
+                
         """
             + f"""
         
@@ -242,4 +242,33 @@ class Prompter:
         Question: "Will Kamala win"
         Outcomes: Yes or No
         
+        """
+
+    # NEW: Single-market classification prompt
+    def classify_market_category(self, question: str, description: str = "", slug: str = "") -> str:
+        return f"""
+        You are an expert market cataloger. Classify the market into one of these categories:
+        ["politics", "crypto", "sports", "finance", "tech", "science", "entertainment", "other"].
+
+        Market question: {question}
+        Market description: {description}
+        Market slug: {slug}
+
+        Output strict JSON on a single line with this schema:
+        {{"category": "<one_of_list_above>"}}
+        No explanations or extra text.
+        """
+
+    # NEW: Batch classification prompt
+    def classify_markets_batch(self, items_json: str) -> str:
+        return f"""
+        You are an expert market cataloger. Classify each market into one of these categories:
+        ["politics", "crypto", "sports", "finance", "tech", "science", "entertainment", "other"].
+
+        Input JSON array of objects: {items_json}
+        Each object will have: id, question, description (optional), slug (optional).
+
+        Output strict JSON array on a single line where each element is:
+        {{"id": "<id>", "category": "<one_of_list_above>"}}
+        No explanations or extra text.
         """
