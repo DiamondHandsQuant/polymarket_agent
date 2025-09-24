@@ -20,3 +20,9 @@
 
 ## Notes
 - Do not add a new config loader; reuse `yaml.safe_load` within `BaseBot`.
+
+---
+Maintainer comment:
+- Created `configs/option_seller.yaml`, `configs/market_maker.yaml`, `configs/risk.yaml` with dry_run defaults.
+- Validated by constructing `BaseBot` with each config and running 2–3 seconds; logs and state dirs created.
+- Commit: configs added 521bfaa.

@@ -26,3 +26,9 @@
 
 ## Notes
 - Keep code style consistent with repository; minimal dependencies; no new third-party libs.
+
+---
+Maintainer comment:
+- Implemented in `agents/strategies/__init__.py` and `agents/strategies/base.py`.
+- Dry-run smoke test with `configs/option_seller.yaml`: bot started, ticked, logged, and stopped cleanly.
+- Commits: BaseBot scaffold 3b3e47e; verified via CLI in subsequent commits.

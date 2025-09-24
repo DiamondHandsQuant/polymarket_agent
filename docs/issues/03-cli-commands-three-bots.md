@@ -20,3 +20,9 @@
 
 ## Notes
 - Avoid global side effects on import; construct bots inside commands.
+
+---
+Maintainer comment:
+- Added commands (available as kebab-case): `run-option-seller`, `run-market-maker`, `run-risk-manager`.
+- Tested via `PYTHONPATH=. python3 scripts/python/cli.py run-option-seller --config configs/option_seller.yaml --duration 2` (and others): all started, ticked, logged, and stopped.
+- Commit: CLI commands fa7e675.
