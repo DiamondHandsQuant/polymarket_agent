@@ -14,7 +14,7 @@
 ## Acceptance Criteria
 - Deterministic outputs for given inputs, no network calls.
 - Thresholds configurable via caller-provided params.
-- Safe defaults if inputs missing.
+- No implicit defaults; raise on missing/invalid inputs.
 
 ## Notes
 - Keep purely computational; RiskManager wires IO later.
