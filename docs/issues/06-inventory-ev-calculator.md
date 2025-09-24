@@ -18,3 +18,14 @@
 
 ## Notes
 - Keep purely computational; RiskManager wires IO later.
+
+---
+Maintainer comment:
+- Implemented `agents/strategies/risk_utils.py`: `compute_market_ev`, `sum_global_ev`, `decide_action` (raises on missing/invalid inputs; no defaults).
+- Smoke tests: EV calc, global EV sum, and actions (NONE/FLATTEN/WIDEN) executed as expected.
+- Commit: 3584c14.
+
+---
+Closed:
+- Date: 2025-09-24
+- Commits: 3584c14
