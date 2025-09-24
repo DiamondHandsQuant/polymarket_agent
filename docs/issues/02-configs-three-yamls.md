@@ -26,3 +26,8 @@ Maintainer comment:
 - Created `configs/option_seller.yaml`, `configs/market_maker.yaml`, `configs/risk.yaml` with dry_run defaults.
 - Validated by constructing `BaseBot` with each config and running 2–3 seconds; logs and state dirs created.
 - Commit: configs added 521bfaa.
+
+---
+Closed:
+- Date: 2025-09-24
+- Commits: 521bfaa (configs)
