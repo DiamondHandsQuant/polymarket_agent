@@ -1,0 +1,13 @@
+# Risk Manager
+ops:
+  dry_run: true
+  state_dir: local_state/risk_manager
+  log_path: logs/risk_manager.log
+  tick_seconds: 15
+
+risk:
+  per_market_ev_cap: 1000
+  global_ev_cap: 4000
+  daily_loss_stop_usd: 800
+  fast_move_cents: 10
+  widen_action_addon_cents: 2

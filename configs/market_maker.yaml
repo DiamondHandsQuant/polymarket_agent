@@ -1,0 +1,29 @@
+# Dedicated Market Maker
+ops:
+  dry_run: true
+  state_dir: local_state/market_maker
+  log_path: logs/market_maker.log
+  tick_seconds: 20
+
+market_selection:
+  min_volume_24h: 15000
+  max_spread_cents: 3
+  mid_price_band: [0.35, 0.65]
+  exclude_tags: []
+  limit: 8
+
+quoting:
+  base_spread_cents: 1
+  min_spread_cents: 1
+  level_spacing_cents: 1
+  levels_per_side: 3
+  clip_usdc_top: 150
+  clip_usdc_deep: 300
+  refresh_seconds: 45
+  skew_k: 0.02
+
+inventory:
+  per_market_ev_cap: 1000
+  flatten_threshold_pct: 0.7
+  global_ev_cap: 4000
+  maker_only: true
