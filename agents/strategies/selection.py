@@ -7,11 +7,6 @@ import time
 from typing import Any, Dict, List, Tuple
 
 from agents.polymarket.gamma import GammaMarketClient
-# Optional subgraph support
-try:
-    from agents.connectors.subgraph import SubgraphClient  # type: ignore
-except Exception:  # pragma: no cover
-    SubgraphClient = None  # type: ignore
 from agents.application.executor import Executor
 from agents.application.prompts import Prompter
 
@@ -83,33 +78,6 @@ def get_spread_cents(market: Dict[str, Any]) -> float | None:
         return None
 
 
-# ---------- Subgraph tag helpers (optional path) ----------
-
-def extract_tags_from_subgraph(market: Dict[str, Any]) -> List[str]:
-    tags: List[str] = []
-    ev = market.get("event")
-    if isinstance(ev, dict):
-        etags = ev.get("tags")
-        if isinstance(etags, list):
-            for t in etags:
-                if isinstance(t, dict):
-                    for key in ("slug", "label"):
-                        v = t.get(key)
-                        if isinstance(v, str) and v:
-                            tags.append(v.lower())
-    return list(dict.fromkeys(tags))
-
-
-def classify_market_subgraph_only(market: Dict[str, Any]) -> str:
-    cat = market.get("category")
-    if isinstance(cat, str) and cat:
-        return cat.lower()
-    tags = extract_tags_from_subgraph(market)
-    if tags:
-        return tags[0]
-    return "other"
-
-
 # ---------- LLM classification with caching ----------
 
 def _load_cache(path: str) -> Dict[str, Any]:
@@ -154,7 +122,6 @@ def classify_market_llm(market: Dict[str, Any], cache: Dict[str, Any], ttl_hours
     description = (market.get("description") or "").strip()
     slug = (market.get("slug") or "").strip()
 
-    # Build prompt and invoke LLM (single-item prompt to simplify parsing reliability)
     prompt = prompter.classify_market_category(question=question, description=description, slug=slug)
     result = executor.llm.invoke(prompt)
     cat = "other"
@@ -199,34 +166,21 @@ def market_passes_filters(
 
 def select_markets(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     ms = cfg.get("market_selection", {})
-    source = ms.get("source", "llm")
     limit = int(ms.get("limit", 10))
 
-    if source == "subgraph_only":
-        sg = SubgraphClient(url=ms.get("subgraph_url"))
-        markets = sg.get_markets_with_tags(limit=200)
-    else:
-        gamma = GammaMarketClient()
-        markets = gamma.get_current_markets(limit=200)
+    gamma = GammaMarketClient()
+    markets = gamma.get_current_markets(limit=200)
 
     selected: List[Dict[str, Any]] = []
 
-    # Prepare LLM tools if needed
-    use_llm = source == "llm"
-    exec_obj = Executor() if use_llm else None
-    prompter = Prompter() if use_llm else None
+    exec_obj = Executor()
+    prompter = Prompter()
     cache_path = ms.get("cache_path", "local_state/category_cache.json")
     cache_ttl = int(ms.get("cache_ttl_hours", 24))
-    cache = _load_cache(cache_path) if use_llm else {}
+    cache = _load_cache(cache_path)
 
     for m in markets:
-        if use_llm:
-            category = classify_market_llm(m, cache, cache_ttl, exec_obj, prompter)  # type: ignore[arg-type]
-        elif source == "subgraph_only":
-            category = classify_market_subgraph_only(m)
-        else:
-            category = "other"
-
+        category = classify_market_llm(m, cache, cache_ttl, exec_obj, prompter)
         ok, meta = market_passes_filters(m, cfg)
         if ok:
             m2 = dict(m)
@@ -235,9 +189,7 @@ def select_markets(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
             m2["_volume_eff"] = meta.get("volume", 0.0)
             selected.append(m2)
 
-    # Persist cache if used
-    if use_llm:
-        _save_cache(cache_path, cache)
+    _save_cache(cache_path, cache)
 
     selected.sort(key=lambda x: float(x.get("_volume_eff", 0.0)), reverse=True)
     return selected[:limit]
