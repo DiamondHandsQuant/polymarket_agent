@@ -20,3 +20,14 @@
 
 ## Notes
 - Inventory skew applied by MarketMaker bot (next issues).
+
+---
+Maintainer comment:
+- Implemented in `agents/strategies/quoting.py`: `round_to_tick`, `build_grid`, `apply_widen`.
+- Smoke test: built grid around mid=0.5 with 3 levels (bids [0.48,0.47,0.46], asks [0.52,0.53,0.54]); widening by 2c produced expected shifts.
+- Commit: 273fe14.
+
+---
+Closed:
+- Date: 2025-09-24
+- Commits: 273fe14
