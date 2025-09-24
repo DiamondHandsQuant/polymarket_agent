@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import ast
 import json
-import re
+import os
+import time
 from typing import Any, Dict, List, Tuple
 
 from agents.polymarket.gamma import GammaMarketClient
+from agents.connectors.subgraph import SubgraphClient
+from agents.application.executor import Executor
+from agents.application.prompts import Prompter
 
 
 def _safe_get_prices(market: Dict[str, Any]) -> List[float]:
@@ -33,7 +37,6 @@ def compute_mid_price(market: Dict[str, Any]) -> float | None:
     prices = _safe_get_prices(market)
     if not prices:
         return None
-    # For binary markets, first price is typically the "Yes" probability
     if len(prices) >= 2:
         try:
             mid = float(prices[0])
@@ -66,10 +69,7 @@ def get_spread_cents(market: Dict[str, Any]) -> float | None:
         return None
     try:
         val = float(s)
-        # Gamma often returns integer cents (e.g., 1 for 1c). Handle common cases:
-        # - Integer small numbers: treat as cents
-        # - Fractional <= 1.0: treat as probability and convert to cents
-        # - 1 < val < 100: likely already cents
+        # Common formats: integer cents (e.g., 1), or fraction (e.g., 0.02)
         if val.is_integer() and val <= 10:
             return val
         if val <= 1.0:
@@ -79,101 +79,113 @@ def get_spread_cents(market: Dict[str, Any]) -> float | None:
         return None
 
 
-def extract_tags(market: Dict[str, Any]) -> List[str]:
+# ---------- Subgraph tag helpers (optional path) ----------
+
+def extract_tags_from_subgraph(market: Dict[str, Any]) -> List[str]:
     tags: List[str] = []
-    events = market.get("events")
-    if isinstance(events, list):
-        for e in events:
-            etags = e.get("tags") if isinstance(e, dict) else None
-            if isinstance(etags, list):
-                for t in etags:
-                    if isinstance(t, dict):
-                        for key in ("slug", "label"):
-                            v = t.get(key)
-                            if isinstance(v, str) and v:
-                                tags.append(v.lower())
-    # Fallback: look for top-level tags if present
-    if isinstance(market.get("tags"), list):
-        for t in market["tags"]:
-            if isinstance(t, dict):
-                for key in ("slug", "label"):
-                    v = t.get(key)
-                    if isinstance(v, str) and v:
-                        tags.append(v.lower())
-            elif isinstance(t, str):
-                tags.append(t.lower())
-    return list(dict.fromkeys(tags))  # dedupe, preserve order
+    ev = market.get("event")
+    if isinstance(ev, dict):
+        etags = ev.get("tags")
+        if isinstance(etags, list):
+            for t in etags:
+                if isinstance(t, dict):
+                    for key in ("slug", "label"):
+                        v = t.get(key)
+                        if isinstance(v, str) and v:
+                            tags.append(v.lower())
+    return list(dict.fromkeys(tags))
 
 
-def classify_market(
-    market: Dict[str, Any],
-    category_map: Dict[str, str] | None = None,
-    keyword_rules: Dict[str, List[str]] | None = None,
-) -> str:
-    category_map = category_map or {}
-    keyword_rules = keyword_rules or {}
+def classify_market_subgraph_only(market: Dict[str, Any]) -> str:
+    cat = market.get("category")
+    if isinstance(cat, str) and cat:
+        return cat.lower()
+    tags = extract_tags_from_subgraph(market)
+    if tags:
+        return tags[0]
+    return "other"
 
-    tags = extract_tags(market)
-    for tag in tags:
-        if tag in category_map:
-            return category_map[tag]
 
-    question = (market.get("question") or "").lower()
-    ticker = (market.get("ticker") or "").lower()
-    description = (market.get("description") or "").lower()
-    text = f"{question} {ticker} {description}"
+# ---------- LLM classification with caching ----------
 
-    for cat, words in keyword_rules.items():
-        for w in words:
-            try:
-                if re.search(rf"\b{re.escape(w.lower())}\b", text):
-                    return cat
-            except Exception:
-                # fallback to substring if regex fails
-                if w.lower() in text:
-                    return cat
-    return "unknown"
+def _load_cache(path: str) -> Dict[str, Any]:
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
+
+def _save_cache(path: str, data: Dict[str, Any]) -> None:
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _cache_key(market: Dict[str, Any]) -> str:
+    q = (market.get("question") or "").strip()
+    mid = str(compute_mid_price(market) or "")
+    return f"{market.get('id','')}::{q}::{mid}"
+
+
+def _cache_fresh(entry: Dict[str, Any], ttl_hours: int) -> bool:
+    try:
+        ts = float(entry.get("ts", 0))
+        return (time.time() - ts) <= ttl_hours * 3600
+    except Exception:
+        return False
+
+
+def classify_market_llm(market: Dict[str, Any], cache: Dict[str, Any], ttl_hours: int, executor: Executor, prompter: Prompter) -> str:
+    key = _cache_key(market)
+    if key in cache and _cache_fresh(cache[key], ttl_hours):
+        return cache[key].get("category", "other")
+
+    question = (market.get("question") or "").strip()
+    description = (market.get("description") or "").strip()
+    slug = (market.get("slug") or "").strip()
+
+    # Build prompt and invoke LLM (single-item prompt to simplify parsing reliability)
+    prompt = prompter.classify_market_category(question=question, description=description, slug=slug)
+    result = executor.llm.invoke(prompt)
+    cat = "other"
+    try:
+        data = json.loads(result.content)
+        c = (data or {}).get("category")
+        if isinstance(c, str) and c:
+            cat = c.lower()
+    except Exception:
+        cat = "other"
+
+    cache[key] = {"category": cat, "ts": time.time()}
+    return cat
+
+
+# ---------- Filters and selection ----------
 
 def market_passes_filters(
     market: Dict[str, Any],
     cfg: Dict[str, Any],
-    category: str | None = None,
 ) -> Tuple[bool, Dict[str, Any]]:
     ms = dict(cfg.get("market_selection", {}))
-    # Apply per-category overrides
-    if category and "per_category" in ms and isinstance(ms["per_category"], dict):
-        overrides = ms["per_category"].get(category)
-        if isinstance(overrides, dict):
-            ms = {**ms, **{k: v for k, v in overrides.items() if v is not None}}
 
     volume = get_volume(market)
     mid = compute_mid_price(market)
     spread_c = get_spread_cents(market)
-    tags = set(extract_tags(market))
 
     min_vol = float(ms.get("min_volume_24h", 0))
     max_spread_cents = ms.get("max_spread_cents")
     band = ms.get("mid_price_band", [0.0, 1.0])
-    include_tags = set([t.lower() for t in ms.get("include_tags", [])])
-    exclude_tags = set([t.lower() for t in ms.get("exclude_tags", [])])
 
-    # Tag filters
-    if include_tags:
-        if tags.isdisjoint(include_tags):
-            return False, {"reason": "include_tags", "tags": list(tags)}
-    if exclude_tags and not tags.isdisjoint(exclude_tags):
-        return False, {"reason": "exclude_tags", "tags": list(tags)}
-
-    # Volume
     if volume < min_vol:
         return False, {"reason": "volume", "got": volume, "min": min_vol}
-
-    # Mid band
     if mid is None or not (float(band[0]) <= mid <= float(band[1])):
         return False, {"reason": "mid_band", "mid": mid, "band": band}
-
-    # Spread
     if max_spread_cents is not None and spread_c is not None:
         if spread_c > float(max_spread_cents):
             return False, {"reason": "spread", "spread_cents": spread_c}
@@ -181,24 +193,47 @@ def market_passes_filters(
     return True, {"volume": volume, "mid": mid, "spread_cents": spread_c}
 
 
-def select_markets(cfg: Dict[str, Any], gamma: GammaMarketClient | None = None) -> List[Dict[str, Any]]:
-    gamma = gamma or GammaMarketClient()
-    limit = int(cfg.get("market_selection", {}).get("limit", 10))
+def select_markets(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    ms = cfg.get("market_selection", {})
+    source = ms.get("source", "llm")
+    limit = int(ms.get("limit", 10))
 
-    markets = gamma.get_current_markets(limit=200)
-    category_map = cfg.get("market_selection", {}).get("category_map", {})
-    keyword_rules = cfg.get("market_selection", {}).get("keyword_rules", {})
+    if source == "subgraph_only":
+        sg = SubgraphClient(url=ms.get("subgraph_url"))
+        markets = sg.get_markets_with_tags(limit=200)
+    else:
+        gamma = GammaMarketClient()
+        markets = gamma.get_current_markets(limit=200)
 
     selected: List[Dict[str, Any]] = []
+
+    # Prepare LLM tools if needed
+    use_llm = source == "llm"
+    exec_obj = Executor() if use_llm else None
+    prompter = Prompter() if use_llm else None
+    cache_path = ms.get("cache_path", "local_state/category_cache.json")
+    cache_ttl = int(ms.get("cache_ttl_hours", 24))
+    cache = _load_cache(cache_path) if use_llm else {}
+
     for m in markets:
-        category = classify_market(m, category_map=category_map, keyword_rules=keyword_rules)
-        ok, meta = market_passes_filters(m, cfg, category)
+        if use_llm:
+            category = classify_market_llm(m, cache, cache_ttl, exec_obj, prompter)  # type: ignore[arg-type]
+        elif source == "subgraph_only":
+            category = classify_market_subgraph_only(m)
+        else:
+            category = "other"
+
+        ok, meta = market_passes_filters(m, cfg)
         if ok:
             m2 = dict(m)
             m2["category"] = category
             m2["mid"] = meta.get("mid")
             m2["_volume_eff"] = meta.get("volume", 0.0)
             selected.append(m2)
+
+    # Persist cache if used
+    if use_llm:
+        _save_cache(cache_path, cache)
 
     selected.sort(key=lambda x: float(x.get("_volume_eff", 0.0)), reverse=True)
     return selected[:limit]
