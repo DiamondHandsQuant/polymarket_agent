@@ -1,17 +1,19 @@
 import typer
 from devtools import pprint
+import time
 
 from agents.polymarket.polymarket import Polymarket
-from agents.connectors.chroma import PolymarketRAG
-from agents.connectors.news import News
+# Lazy imports for optional connectors moved into functions
+# from agents.connectors.chroma import PolymarketRAG
+# from agents.connectors.news import News
 from agents.application.trade import Trader
 from agents.application.executor import Executor
 from agents.application.creator import Creator
 
 app = typer.Typer()
 polymarket = Polymarket()
-newsapi_client = News()
-polymarket_rag = PolymarketRAG()
+# newsapi_client = News()
+# polymarket_rag = PolymarketRAG()
 
 
 @app.command()
@@ -38,6 +40,8 @@ def get_relevant_news(keywords: str) -> None:
     """
     Use NewsAPI to query the internet
     """
+    from agents.connectors.news import News
+    newsapi_client = News()
     articles = newsapi_client.get_articles_for_cli_keywords(keywords)
     pprint(articles)
 
@@ -82,6 +86,8 @@ def create_local_markets_rag(local_directory: str) -> None:
     """
     Create a local markets database for RAG
     """
+    from agents.connectors.chroma import PolymarketRAG
+    polymarket_rag = PolymarketRAG()
     polymarket_rag.create_local_markets_rag(local_directory=local_directory)
 
 
@@ -90,6 +96,8 @@ def query_local_markets_rag(vector_db_directory: str, query: str) -> None:
     """
     RAG over a local database of Polymarket's events
     """
+    from agents.connectors.chroma import PolymarketRAG
+    polymarket_rag = PolymarketRAG()
     response = polymarket_rag.query_local_markets_rag(
         local_directory=vector_db_directory, query=query
     )
@@ -148,6 +156,43 @@ def run_autonomous_trader() -> None:
     """
     trader = Trader()
     trader.one_best_trade()
+
+
+# New commands for automated strategies
+@app.command()
+def run_option_seller(config: str = typer.Option("configs/option_seller.yaml"), duration: int = typer.Option(5)) -> None:
+    """Run Option Seller bot (dry-run by default)."""
+    from agents.strategies.base import BaseBot
+    bot = BaseBot(config)
+    bot.start()
+    time_end = time.time() + duration
+    while time.time() < time_end:
+        time.sleep(0.5)
+    bot.stop()
+
+
+@app.command()
+def run_market_maker(config: str = typer.Option("configs/market_maker.yaml"), duration: int = typer.Option(5)) -> None:
+    """Run Market Maker bot (dry-run by default)."""
+    from agents.strategies.base import BaseBot
+    bot = BaseBot(config)
+    bot.start()
+    time_end = time.time() + duration
+    while time.time() < time_end:
+        time.sleep(0.5)
+    bot.stop()
+
+
+@app.command()
+def run_risk_manager(config: str = typer.Option("configs/risk.yaml"), duration: int = typer.Option(5)) -> None:
+    """Run Risk Manager controller (dry-run by default)."""
+    from agents.strategies.base import BaseBot
+    bot = BaseBot(config)
+    bot.start()
+    time_end = time.time() + duration
+    while time.time() < time_end:
+        time.sleep(0.5)
+    bot.stop()
 
 
 if __name__ == "__main__":
