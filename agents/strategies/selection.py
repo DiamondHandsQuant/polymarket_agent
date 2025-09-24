@@ -7,7 +7,11 @@ import time
 from typing import Any, Dict, List, Tuple
 
 from agents.polymarket.gamma import GammaMarketClient
-from agents.connectors.subgraph import SubgraphClient
+# Optional subgraph support
+try:
+    from agents.connectors.subgraph import SubgraphClient  # type: ignore
+except Exception:  # pragma: no cover
+    SubgraphClient = None  # type: ignore
 from agents.application.executor import Executor
 from agents.application.prompts import Prompter
 
