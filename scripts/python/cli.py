@@ -190,6 +190,41 @@ def refresh_markets(
     print(f"Persisted {len(markets)} markets to {markets_json} and {chroma_dir}")
 
 
+@app.command()
+def route_markets(
+    source_config: str = typer.Option("configs/option_seller.yaml"),
+    markets_json_path: str = typer.Option(None),
+    option_seller_config: str = typer.Option("configs/option_seller.yaml"),
+    market_maker_config: str = typer.Option("configs/market_maker.yaml"),
+    risk_manager_config: str = typer.Option("configs/risk.yaml"),
+    option_seller_limit: int = typer.Option(None),
+    market_maker_limit: int = typer.Option(None),
+    risk_manager_limit: int = typer.Option(None),
+    allow_overlap: bool = typer.Option(False),
+    option_seller_output: str = typer.Option(None),
+    market_maker_output: str = typer.Option(None),
+    risk_manager_output: str = typer.Option(None),
+) -> None:
+    """
+    Route cached markets to per-bot selections using config-driven filters.
+    """
+    from agents.application.router import route_markets as route
+
+    routes = [
+        ("option_seller", option_seller_config, option_seller_limit, allow_overlap, option_seller_output),
+        ("market_maker", market_maker_config, market_maker_limit, allow_overlap, market_maker_output),
+        ("risk_manager", risk_manager_config, risk_manager_limit, allow_overlap, risk_manager_output),
+    ]
+
+    results = route(
+        source_config=source_config,
+        markets_json_path=markets_json_path,
+        routes=routes,
+    )
+
+    pprint(results)
+
+
 # New commands for automated strategies
 @app.command()
 def run_option_seller(config: str = typer.Option("configs/option_seller.yaml"), duration: int = typer.Option(5)) -> None:
