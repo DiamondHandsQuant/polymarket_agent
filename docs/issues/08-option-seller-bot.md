@@ -2,6 +2,7 @@
 
 ### See also
 - `docs/issues/13-market-selection-refresh-and-cache.md`
+- `docs/issues/14-selection-routing-orchestrator.md`
 
 ## Background (reuse existing code)
 - Use `GammaMarketClient` for selection and `Polymarket` for order ops.
