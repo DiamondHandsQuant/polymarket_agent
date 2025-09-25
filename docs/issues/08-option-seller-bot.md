@@ -1,5 +1,8 @@
 # Issue 8: Implement OptionSellerBot (Grid Volume Farmer)
 
+### See also
+- `docs/issues/13-market-selection-refresh-and-cache.md`
+
 ## Background (reuse existing code)
 - Use `GammaMarketClient` for selection and `Polymarket` for order ops.
 - Reuse helpers from Issues 4–7.

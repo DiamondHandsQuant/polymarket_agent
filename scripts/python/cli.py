@@ -6,7 +6,7 @@ from agents.polymarket.polymarket import Polymarket
 # Lazy imports for optional connectors moved into functions
 # from agents.connectors.chroma import PolymarketRAG
 # from agents.connectors.news import News
-from agents.application.trade import Trader
+from agents.strategies.selection import select_markets
 from agents.application.executor import Executor
 from agents.application.creator import Creator
 
@@ -150,20 +150,52 @@ def ask_polymarket_llm(user_input: str) -> None:
 
 
 @app.command()
-def run_autonomous_trader() -> None:
+def refresh_markets(
+    config: str = typer.Option("configs/option_seller.yaml"),
+    limit: int = typer.Option(None),
+    fetch_limit: int = typer.Option(None),
+    min_volume_24h: float = typer.Option(None),
+    skip_classify: bool = typer.Option(False),
+    markets_json_path: str = typer.Option(None),
+    markets_chroma_dir: str = typer.Option(None),
+) -> None:
     """
-    Let an autonomous system trade for you.
+    Refresh local markets cache and Chroma index using selection.select_markets.
     """
-    trader = Trader()
-    trader.one_best_trade()
+    import yaml
+    from agents.connectors.chroma import PolymarketRAG
+
+    with open(config, "r") as f:
+        cfg = yaml.safe_load(f) or {}
+
+    # apply overrides without hardcoding defaults
+    if limit is not None:
+        cfg.setdefault("market_selection", {})["limit"] = int(limit)
+    if fetch_limit is not None:
+        cfg.setdefault("market_selection", {})["fetch_limit"] = int(fetch_limit)
+    if min_volume_24h is not None:
+        cfg.setdefault("market_selection", {})["min_volume_24h"] = float(min_volume_24h)
+    if skip_classify:
+        cfg.setdefault("market_selection", {})["classify"] = False
+
+    markets = select_markets(cfg)
+
+    # Determine output paths from config if provided; otherwise use conventional paths
+    # prefer CLI args if provided, else config values, else conventional paths
+    markets_json = markets_json_path or cfg.get("ops", {}).get("markets_json_path") or "local_db_markets/markets.json"
+    chroma_dir = markets_chroma_dir or cfg.get("ops", {}).get("markets_chroma_dir") or "local_db_markets/chroma"
+
+    rag = PolymarketRAG()
+    rag.persist_markets(markets=markets, json_file_path=markets_json, vector_db_directory=chroma_dir)
+    print(f"Persisted {len(markets)} markets to {markets_json} and {chroma_dir}")
 
 
 # New commands for automated strategies
 @app.command()
 def run_option_seller(config: str = typer.Option("configs/option_seller.yaml"), duration: int = typer.Option(5)) -> None:
     """Run Option Seller bot (dry-run by default)."""
-    from agents.strategies.base import BaseBot
-    bot = BaseBot(config)
+    from agents.strategies.option_seller import OptionSellerBot
+    bot = OptionSellerBot(config)
     bot.start()
     time_end = time.time() + duration
     while time.time() < time_end:

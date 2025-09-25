@@ -135,3 +135,44 @@ class PolymarketRAG:
 
         # query
         return local_db.similarity_search_with_score(query=prompt)
+
+    def persist_markets(self, markets, json_file_path: str, vector_db_directory: str) -> None:
+        # write JSON file
+        os.makedirs(os.path.dirname(json_file_path), exist_ok=True)
+
+        dict_markets = []
+        for market in markets:
+            if hasattr(market, 'dict'):
+                dict_markets.append(market.dict())
+            else:
+                dict_markets.append(market)
+
+        with open(json_file_path, "w+") as output_file:
+            json.dump(dict_markets, output_file)
+
+        # If nothing to index, exit gracefully
+        if not dict_markets:
+            return
+
+        # build/update Chroma index
+        def metadata_func(record: dict, metadata: dict) -> dict:
+            metadata["id"] = record.get("id")
+            metadata["outcomes"] = record.get("outcomes") or record.get("outcome") or "[]"
+            metadata["outcome_prices"] = record.get("outcome_prices") or record.get("outcomePrices") or "[]"
+            metadata["question"] = record.get("question")
+            metadata["clob_token_ids"] = record.get("clob_token_ids") or record.get("clobTokenIds")
+            return metadata
+
+        loader = JSONLoader(
+            file_path=json_file_path,
+            jq_schema=".[]",
+            content_key="description",
+            text_content=False,
+            metadata_func=metadata_func,
+        )
+        loaded_docs = loader.load()
+        embedding_function = OpenAIEmbeddings(model="text-embedding-3-small")
+        os.makedirs(vector_db_directory, exist_ok=True)
+        Chroma.from_documents(
+            loaded_docs, embedding_function, persist_directory=vector_db_directory
+        )

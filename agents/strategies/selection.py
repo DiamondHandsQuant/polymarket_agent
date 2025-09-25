@@ -164,23 +164,59 @@ def market_passes_filters(
     return True, {"volume": volume, "mid": mid, "spread_cents": spread_c}
 
 
+def select_markets_from_cache(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Fast market selection using cached data from local_db_markets/markets.json"""
+    ms = cfg.get("market_selection", {})
+    limit = int(ms.get("limit", 10))
+    
+    # Read from cached markets JSON
+    markets_file = "local_db_markets/markets.json"
+    if not os.path.exists(markets_file):
+        return []
+    
+    try:
+        with open(markets_file, "r") as f:
+            markets = json.load(f)
+    except Exception:
+        return []
+    
+    selected: List[Dict[str, Any]] = []
+    
+    for m in markets:
+        ok, meta = market_passes_filters(m, cfg)
+        if ok:
+            m2 = dict(m)
+            m2["category"] = "cached"  # Skip LLM classification for speed
+            m2["mid"] = meta.get("mid")
+            m2["_volume_eff"] = meta.get("volume", 0.0)
+            selected.append(m2)
+    
+    selected.sort(key=lambda x: float(x.get("_volume_eff", 0.0)), reverse=True)
+    return selected[:limit]
+
+
 def select_markets(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     ms = cfg.get("market_selection", {})
     limit = int(ms.get("limit", 10))
+    classify_enabled = bool(ms.get("classify", True))
 
     gamma = GammaMarketClient()
-    markets = gamma.get_current_markets(limit=200)
+    fetch_limit_raw = ms.get("fetch_limit")
+    fetch_limit = int(fetch_limit_raw) if fetch_limit_raw is not None else int(limit)
+    markets = gamma.get_current_markets(limit=fetch_limit)
 
     selected: List[Dict[str, Any]] = []
 
-    exec_obj = Executor()
-    prompter = Prompter()
+    exec_obj = Executor() if classify_enabled else None
+    prompter = Prompter() if classify_enabled else None
     cache_path = ms.get("cache_path", "local_state/category_cache.json")
     cache_ttl = int(ms.get("cache_ttl_hours", 24))
-    cache = _load_cache(cache_path)
+    cache = _load_cache(cache_path) if classify_enabled else {}
 
     for m in markets:
-        category = classify_market_llm(m, cache, cache_ttl, exec_obj, prompter)
+        category = "uncategorized"
+        if classify_enabled and exec_obj is not None and prompter is not None:
+            category = classify_market_llm(m, cache, cache_ttl, exec_obj, prompter)
         ok, meta = market_passes_filters(m, cfg)
         if ok:
             m2 = dict(m)
@@ -189,7 +225,8 @@ def select_markets(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
             m2["_volume_eff"] = meta.get("volume", 0.0)
             selected.append(m2)
 
-    _save_cache(cache_path, cache)
+    if classify_enabled:
+        _save_cache(cache_path, cache)
 
     selected.sort(key=lambda x: float(x.get("_volume_eff", 0.0)), reverse=True)
     return selected[:limit]

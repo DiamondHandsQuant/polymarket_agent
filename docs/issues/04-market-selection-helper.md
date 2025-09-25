@@ -53,3 +53,6 @@ Maintainer comment:
 Closed:
 - Date: 2025-09-24
 - Commits: a10d8f2, 8e8aefe, f1c17fd, ad05afb, 1216dda
+
+### See also
+- `docs/issues/13-market-selection-refresh-and-cache.md`
