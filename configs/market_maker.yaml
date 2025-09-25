@@ -4,6 +4,7 @@ ops:
   state_dir: local_state/market_maker
   log_path: logs/market_maker.log
   tick_seconds: 20
+  selected_markets_path: local_state/market_maker/selected_markets.json
 
   # Orders: all knobs consumed by agents/strategies/orders.py
   rate_limit:

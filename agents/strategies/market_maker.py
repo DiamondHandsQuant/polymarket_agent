@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import json
 from typing import Any, Dict, List, Tuple
+import os
 
 from agents.strategies.base import BaseBot
 from agents.strategies.selection import select_markets, compute_mid_price
@@ -36,7 +37,19 @@ class MarketMakerBot(BaseBot):
             inventory_cfg: Dict[str, Any] = self.config.get("inventory", {})
 
             self._log("market_maker_selecting_markets")
-            selected = select_markets(self.config)
+            # Prefer routed selections if configured
+            selected: List[Dict[str, Any]] = []
+            routed_path = ops.get("selected_markets_path")
+            if routed_path and os.path.exists(routed_path):
+                try:
+                    with open(routed_path, "r") as f:
+                        selected = json.load(f) or []
+                    self._log("market_maker_selected_markets_source", {"source": "routed", "path": routed_path})
+                except Exception as err:
+                    self._log("market_maker_selected_markets_load_error", {"path": routed_path, "error": str(err)})
+            if not selected:
+                selected = select_markets(self.config)
+                self._log("market_maker_selected_markets_source", {"source": "live_selection"})
             self._log("market_maker_selected_markets", {"count": len(selected)})
             if not selected:
                 self._log("market_maker_no_markets")
