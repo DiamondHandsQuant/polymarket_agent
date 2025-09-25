@@ -241,8 +241,8 @@ def run_option_seller(config: str = typer.Option("configs/option_seller.yaml"), 
 @app.command()
 def run_market_maker(config: str = typer.Option("configs/market_maker.yaml"), duration: int = typer.Option(5)) -> None:
     """Run Market Maker bot (dry-run by default)."""
-    from agents.strategies.base import BaseBot
-    bot = BaseBot(config)
+    from agents.strategies.market_maker import MarketMakerBot
+    bot = MarketMakerBot(config)
     bot.start()
     time_end = time.time() + duration
     while time.time() < time_end:
