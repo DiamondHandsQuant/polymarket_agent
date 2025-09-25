@@ -1,9 +1,34 @@
 # Option Seller / Grid Volume Farmer
 ops:
-  dry_run: true
+  dry_run: false
   state_dir: local_state/option_seller
   log_path: logs/option_seller.log
   tick_seconds: 30
+
+  # Orders: all knobs consumed by agents/strategies/orders.py
+  rate_limit:
+    min_interval_seconds: 0.5
+    jitter_ms: 150
+
+  retry:
+    max_attempts: 3
+    base_sleep_seconds: 0.5
+    jitter_ms: 200
+    max_total_seconds: 10
+
+  price_band:
+    # Reject limit orders beyond this band from mid (in basis points)
+    max_bps_from_mid: 500
+
+  refresh:
+    ttl_seconds: 60
+
+  concurrency:
+    enable_per_market_lock: true
+
+  spend_caps:
+    max_orders_per_interval: 20
+    interval_seconds: 60
 
 market_selection:
   min_volume_24h: 5000

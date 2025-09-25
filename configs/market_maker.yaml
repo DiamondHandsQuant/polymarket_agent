@@ -1,9 +1,33 @@
 # Dedicated Market Maker
 ops:
-  dry_run: true
+  dry_run: false
   state_dir: local_state/market_maker
   log_path: logs/market_maker.log
   tick_seconds: 20
+
+  # Orders: all knobs consumed by agents/strategies/orders.py
+  rate_limit:
+    min_interval_seconds: 0.25
+    jitter_ms: 100
+
+  retry:
+    max_attempts: 4
+    base_sleep_seconds: 0.4
+    jitter_ms: 150
+    max_total_seconds: 12
+
+  price_band:
+    max_bps_from_mid: 400
+
+  refresh:
+    ttl_seconds: 45
+
+  concurrency:
+    enable_per_market_lock: true
+
+  spend_caps:
+    max_orders_per_interval: 30
+    interval_seconds: 60
 
 market_selection:
   min_volume_24h: 15000

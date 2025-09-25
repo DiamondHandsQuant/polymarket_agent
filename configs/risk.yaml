@@ -1,9 +1,29 @@
 # Risk Manager
 ops:
-  dry_run: true
+  dry_run: false
   state_dir: local_state/risk_manager
   log_path: logs/risk_manager.log
   tick_seconds: 15
+
+  # Orders: knobs used only if risk bot triggers orders (future-proof)
+  rate_limit:
+    min_interval_seconds: 0.5
+    jitter_ms: 150
+
+  retry:
+    max_attempts: 3
+    base_sleep_seconds: 0.5
+    jitter_ms: 200
+    max_total_seconds: 10
+
+  price_band:
+    max_bps_from_mid: 600
+
+  refresh:
+    ttl_seconds: 60
+
+  concurrency:
+    enable_per_market_lock: true
 
 risk:
   per_market_ev_cap: 1000

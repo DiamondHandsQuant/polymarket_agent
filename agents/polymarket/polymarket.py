@@ -308,7 +308,19 @@ class Polymarket:
         return self.client.get_order_book(token_id)
 
     def get_orderbook_price(self, token_id: str) -> float:
-        return float(self.client.get_price(token_id))
+        try:
+            # Try without side first (older API)
+            price_data = self.client.get_price(token_id)
+            if isinstance(price_data, dict):
+                # Extract price from dict response
+                return float(price_data.get("price", price_data.get("mid", 0.5)))
+            return float(price_data)
+        except TypeError:
+            # If that fails, try with BUY side (newer API)
+            price_data = self.client.get_price(token_id, side="BUY")
+            if isinstance(price_data, dict):
+                return float(price_data.get("price", price_data.get("mid", 0.5)))
+            return float(price_data)
 
     def get_address_for_private_key(self):
         account = self.w3.eth.account.from_key(str(self.private_key))
@@ -359,6 +371,17 @@ class Polymarket:
         print(resp)
         print("Done!")
         return resp
+
+    def cancel_order(self, order_id: str):
+        """
+        Thin delegation to the underlying CLOB client cancel API.
+        No business logic here; callers implement retries/backoff.
+        """
+        if hasattr(self.client, "cancel_order"):
+            return self.client.cancel_order(order_id)
+        if hasattr(self.client, "delete_order"):
+            return self.client.delete_order(order_id)
+        raise NotImplementedError("Underlying CLOB client does not expose cancel_order/delete_order")
 
     def get_usdc_balance(self) -> float:
         balance_res = self.usdc.functions.balanceOf(
