@@ -25,6 +25,9 @@ ops:
   concurrency:
     enable_per_market_lock: true
 
+market_selection:
+  min_volume_24h: 0
+
 risk:
   per_market_ev_cap: 1000
   global_ev_cap: 4000

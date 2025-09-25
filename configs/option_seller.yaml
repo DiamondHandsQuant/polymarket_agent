@@ -1,9 +1,9 @@
 # Option Seller / Grid Volume Farmer
 ops:
-  dry_run: false
+  dry_run: true
   state_dir: local_state/option_seller
   log_path: logs/option_seller.log
-  tick_seconds: 30
+  tick_seconds: 8
 
   # Orders: all knobs consumed by agents/strategies/orders.py
   rate_limit:
