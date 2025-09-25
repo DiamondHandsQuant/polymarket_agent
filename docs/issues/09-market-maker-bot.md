@@ -27,6 +27,7 @@
 - Honors per-market EV cap and maker-only quoting.
 - Clean logs show skew, levels, and actions.
 - If using cache path, a documented `refresh-markets` run precedes bot start.
+- If routed selections are provided, the bot consumes `selected_markets.json` and operates on those markets.
 
 ## Notes
 - Keep parameters from config; no hardcoded values.
@@ -39,6 +40,24 @@
   - Config knobs in `market_selection`:
     - `limit`, `fetch_limit`, `classify`, `min_volume_24h`, `max_spread_cents`, `mid_price_band`.
   - Output destinations (optional in `ops`): `markets_json_path`, `markets_chroma_dir`.
+
+### Status
+- Selection/refresh and routing flow are implemented (see Issues 13 and 14).
+- Configs allow low-volume testing; adjust thresholds in YAML for production.
+- Next step: implement Market Maker strategy logic and make it read routed selections if configured.
+
+### Runbook (testing)
+```bash
+# 1) Refresh a small snapshot quickly
+PYTHONPATH=. python3 scripts/python/cli.py refresh-markets \
+  --config configs/market_maker.yaml --limit 8 --fetch-limit 20 --skip-classify --min-volume-24h 0
+
+# 2) Route to per-bot selection files (overlap optional during testing)
+PYTHONPATH=. python3 scripts/python/cli.py route-markets \
+  --markets-json-path local_db_markets/markets.json \
+  --market-maker-config configs/market_maker.yaml \
+  --market-maker-output local_state/market_maker/selected_markets.json
+```
 
 ### See also
 - `docs/issues/13-market-selection-refresh-and-cache.md`
