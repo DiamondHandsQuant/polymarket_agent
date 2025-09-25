@@ -59,3 +59,12 @@
 
 ## Notes
 - Keep minimal; advanced handling (full state machine, event-driven updates, deep simulation) remains out of scope.
+
+## Completion (Implemented & Tested)
+- Implemented `agents/strategies/orders.py` with `place_limit`, `cancel`, `refresh`.
+- Added thin `Polymarket.cancel_order(order_id)` delegate.
+- Updated `configs/*` `ops` with rate_limit, retry, price_band, refresh, concurrency, spend_caps.
+- Added `docs/workflow-diagram.md` and test scripts under `scripts/python/`.
+- Tests:
+  - Dry-run: logs and stub persisted; no network calls.
+  - Live: price-band guard works; live order attempts reach CLOB. Example rejection due to min-size constraint confirms end-to-end wiring.
