@@ -1,4 +1,4 @@
-## Issue 14: Centralized selection → Chroma → routing to bots
+## Issue 14: Centralized selection → Chroma → routing to bots - ✅ COMPLETED
 
 ### Summary
 Introduce a single orchestration flow that selects markets once, persists to cache/Chroma, then routes markets to the three bots based on config-driven policies.
@@ -33,9 +33,14 @@ Introduce a single orchestration flow that selects markets once, persists to cac
   - Deterministic assignment with priority rules to avoid double-allocation unless allowed.
 
 ### Acceptance Criteria
-- Single refresh followed by routing deterministically produces three per-bot selection files.
-- Bots consume those files without code changes (or minimal opt-in change).
-- Fully config-driven; no hardcoded thresholds.
+- ✅ Single refresh followed by routing deterministically produces three per-bot selection files.
+- ✅ Bots consume those files without code changes (or minimal opt-in change).
+- ✅ Fully config-driven; no hardcoded thresholds.
+
+### Status
+- ✅ Router implemented: `agents/application/router.py`
+- ✅ CLI wired: `route-markets`
+- ✅ Bots updated to prioritize routed selections
 
 ### Follow-ups
 - Scheduler to run: refresh-markets → route-markets at TTL.

@@ -1,4 +1,4 @@
-## Market selection, refresh workflow, and cache/Chroma persistence
+## Market selection, refresh workflow, and cache/Chroma persistence - ✅ COMPLETED
 
 ### Summary
 - Implemented a systematic market selection and refresh flow.
@@ -62,6 +62,11 @@ PYTHONPATH=. python3 scripts/python/cli.py refresh-markets --config configs/opti
 ### Migration notes
 - If a strategy consumes cached markets (e.g., `select_markets_from_cache`), run `refresh-markets` before starting the bot to avoid stale/empty data.
 - For faster iterations, disable classification via `market_selection.classify: false` or `--skip-classify`.
+
+### Status
+- ✅ Implemented `refresh-markets` CLI and `persist_markets` in Chroma connector
+- ✅ Config-driven selection and persistence; demo path removed
+- ✅ Integrated with orchestrator (Issue 14)
 
 ### Follow-ups
 - Add periodic auto-refresh task (cron) with backoff and TTL guard.
