@@ -66,6 +66,10 @@ class BaseBot:
         os.makedirs(state_dir, exist_ok=True)
         self._state_dir = state_dir
 
+    @property
+    def state_dir(self) -> str:
+        return self._state_dir
+
     def start(self) -> None:
         if self._running:
             return

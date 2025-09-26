@@ -253,8 +253,8 @@ def run_market_maker(config: str = typer.Option("configs/market_maker.yaml"), du
 @app.command()
 def run_risk_manager(config: str = typer.Option("configs/risk.yaml"), duration: int = typer.Option(5)) -> None:
     """Run Risk Manager controller (dry-run by default)."""
-    from agents.strategies.base import BaseBot
-    bot = BaseBot(config)
+    from agents.strategies.risk import RiskManagerBot
+    bot = RiskManagerBot(config)
     bot.start()
     time_end = time.time() + duration
     while time.time() < time_end:

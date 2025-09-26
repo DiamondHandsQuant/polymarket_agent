@@ -4,6 +4,11 @@ ops:
   state_dir: local_state/risk_manager
   log_path: logs/risk_manager.log
   tick_seconds: 15
+  actions_dir: local_state/risk_manager/actions
+  local_state_root: local_state
+  monitor_bots:
+    - market_maker
+    - option_seller
 
   # Orders: knobs used only if risk bot triggers orders (future-proof)
   rate_limit:
