@@ -27,3 +27,9 @@ archive.zip
 .cache
 .DS_Store
 local_db*
+
+# Runtime directories
+local_state/
+logs/
+tmp/
+.cursor/
