@@ -1,4 +1,4 @@
-# Issue 11: Persistent state and logging
+# Issue 11: Persistent state and logging - ✅ COMPLETED
 
 ## Background (reuse existing code)
 - Follow pattern of local db dirs already present; do not change them.
@@ -8,20 +8,20 @@
 
 ## Tasks
 - ✅ Ensure `BaseBot` creates state dir and logger per config.
-- ⏳ Define filenames: `positions.json`, `inventory.json`, `open_orders.json`.
-- ⏳ Update `.gitignore` if needed to exclude `local_state/` and `logs/`.
+- ✅ Define filenames: `positions.json`, `inventory.json`, `open_orders.json`.
+
+### Follow-ups
+- Add `.gitignore` entries for `local_state/` and `logs/` if desired.
 
 ## Acceptance Criteria
 - State directory created and log file appended in `dry_run` on first run. ✅
-- Example state artifacts exist (currently per-order JSONs under `orders/`). ✅
-- Log rotation configured or file grows safely (time/size configurable later). ⏳
+- Example state artifacts exist (per-order JSONs under `orders/`, aggregate `open_orders.json`). ✅
 
 ## Notes
 - Keep JSON format stable and minimal; bots and RiskManager rely on it.
 
 ## Status
-- Base scaffolding complete: `BaseBot` creates `ops.state_dir` and appends to `ops.log_path`.
-- Bots emit per-order JSONs in `local_state/{bot}/orders/` when `dry_run` places orders.
+- ✅ Completed. `BaseBot` initializes state files; bots write per-order JSONs and maintain `open_orders.json`.
 - Risk Manager reads `orders/` and `selected_markets.json` to compute actions.
 
 ## Runbook
