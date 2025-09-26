@@ -51,6 +51,24 @@ def _persist_json(path: str, data: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _append_open_orders(ctx: OrderContext, record: Dict[str, Any]) -> None:
+    try:
+        oo_path = os.path.join(ctx.state_dir, "open_orders.json")
+        current: Dict[str, Any] = {"orders": []}
+        if os.path.exists(oo_path):
+            with open(oo_path, "r") as f:
+                try:
+                    current = json.load(f) or {"orders": []}
+                except Exception:
+                    current = {"orders": []}
+        orders_list = current.get("orders", [])
+        orders_list.append(record)
+        current["orders"] = orders_list
+        _persist_json(oo_path, current)
+    except Exception:
+        pass
+
+
 def _deterministic_client_order_id(token_id: str, side: str, price: float, size: float, extra: str) -> str:
     payload = f"{token_id}|{side}|{price}|{size}|{extra}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
@@ -99,7 +117,9 @@ def place_limit(price: float, size: float, side: str, token_id: str, ctx: OrderC
     if ctx.dry_run:
         _log(ctx, "order_place_dry_run", payload)
         stub = {"id": f"stub_{client_order_id}", "status": "DRY_RUN"}
-        _persist_json(os.path.join(state_dir, f"{client_order_id}.json"), {**payload, **stub})
+        record = {**payload, **stub, "created_at_ts": time.time()}
+        _persist_json(os.path.join(state_dir, f"{client_order_id}.json"), record)
+        _append_open_orders(ctx, record)
         return stub["id"]
 
     # Live path
@@ -141,10 +161,12 @@ def place_limit(price: float, size: float, side: str, token_id: str, ctx: OrderC
                 **payload,
                 "exchange_order_id": exchange_order_id,
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at_ts": time.time(),
                 "attempt": attempt,
                 "latency_ms": latency_ms,
             }
             _persist_json(mapping_path, record)
+            _append_open_orders(ctx, record)
             _log(ctx, "order_place_success", record)
             return exchange_order_id
         except Exception as err:

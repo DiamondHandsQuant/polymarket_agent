@@ -65,10 +65,35 @@ class BaseBot:
         state_dir = self.config["ops"].get("state_dir", "local_state/basebot")
         os.makedirs(state_dir, exist_ok=True)
         self._state_dir = state_dir
+        self._init_state_files()
 
     @property
     def state_dir(self) -> str:
         return self._state_dir
+
+    def _init_state_files(self) -> None:
+        """Create baseline state files if missing."""
+        try:
+            # positions.json
+            pos_path = os.path.join(self._state_dir, "positions.json")
+            if not os.path.exists(pos_path):
+                with open(pos_path, "w") as f:
+                    f.write("{}")
+
+            # inventory.json
+            inv_path = os.path.join(self._state_dir, "inventory.json")
+            if not os.path.exists(inv_path):
+                with open(inv_path, "w") as f:
+                    f.write("{}")
+
+            # open_orders.json
+            oo_path = os.path.join(self._state_dir, "open_orders.json")
+            if not os.path.exists(oo_path):
+                with open(oo_path, "w") as f:
+                    f.write(json.dumps({"orders": []}))
+        except Exception:
+            # State bootstrap should be best-effort
+            pass
 
     def start(self) -> None:
         if self._running:
