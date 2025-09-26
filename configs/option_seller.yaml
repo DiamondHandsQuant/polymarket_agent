@@ -4,6 +4,7 @@ ops:
   state_dir: local_state/option_seller
   log_path: logs/option_seller.log
   tick_seconds: 8
+  selected_markets_path: local_state/option_seller/selected_markets.json
 
   # Orders: all knobs consumed by agents/strategies/orders.py
   rate_limit:
@@ -31,7 +32,7 @@ ops:
     interval_seconds: 60
 
 market_selection:
-  min_volume_24h: 5000
+  min_volume_24h: 0
   max_spread_cents: 4
   mid_price_band: [0.35, 0.65]
   exclude_tags: []

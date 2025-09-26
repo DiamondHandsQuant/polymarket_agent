@@ -94,18 +94,35 @@ class RiskManagerBot(BaseBot):
                 side = (od.get("side") or "").upper()
                 size = _safe_float(od.get("size"), 0.0)
                 if token_id not in positions:
-                    positions[token_id] = {"YES": 0.0, "NO": 0.0}
-                positions[token_id][side] = positions[token_id].get(side, 0.0) + size
+                    # Track raw BUY/SELL counts on the YES token id
+                    positions[token_id] = {"BUY": 0.0, "SELL": 0.0}
+                if side in ("BUY", "SELL"):
+                    positions[token_id][side] = positions[token_id].get(side, 0.0) + size
 
             # Compute EV per selected market (use mid if available)
-            for m in state.get("selected", []):
+            selected_list = state.get("selected", [])
+            self._log("risk_selected_loaded", {"bot": bot, "count": len(selected_list)})
+            for m in selected_list:
                 token_ids = m.get("clobTokenIds") or m.get("clob_token_ids") or []
+                # Ensure token_ids is a list
+                if isinstance(token_ids, str):
+                    try:
+                        import json as _json
+                        token_ids = _json.loads(token_ids)
+                    except Exception:
+                        token_ids = []
                 yes_token = str(token_ids[0]) if isinstance(token_ids, list) and token_ids else None
-                mid = _safe_float(m.get("mid"), None)
-                if yes_token is None or mid is None:
+                raw_mid = m.get("mid")
+                if raw_mid is None:
                     continue
-                pos = positions.get(yes_token, {"YES": 0.0, "NO": 0.0})
-                ev = compute_market_ev(pos.get("YES", 0.0), pos.get("NO", 0.0), mid)
+                mid = _safe_float(raw_mid, 0.0)
+                if yes_token is None:
+                    continue
+                pos = positions.get(yes_token, {"BUY": 0.0, "SELL": 0.0})
+                # Map BUY/SELL on YES token to YES/NO exposure approximation
+                pos_yes = _safe_float(pos.get("BUY", 0.0) - pos.get("SELL", 0.0), 0.0)
+                pos_no = 0.0
+                ev = compute_market_ev(pos_yes, pos_no, mid)
                 ev_abs = abs(ev)
                 market_evs.append(ev)
 

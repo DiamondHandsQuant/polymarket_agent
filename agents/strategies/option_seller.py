@@ -36,7 +36,19 @@ class OptionSellerBot(BaseBot):
             inventory_cfg: Dict[str, Any] = self.config.get("inventory", {})
 
             self._log("option_seller_selecting_markets")
-            selected = select_markets_from_cache(self.config)
+            # Prefer routed selections if configured and present
+            selected: List[Dict[str, Any]] = []
+            routed_path = ops.get("selected_markets_path")
+            if routed_path:
+                try:
+                    with open(routed_path, "r") as f:
+                        selected = json.load(f) or []
+                    self._log("option_seller_selected_source", {"source": "routed", "path": routed_path, "count": len(selected)})
+                except Exception:
+                    selected = []
+            if not selected:
+                selected = select_markets_from_cache(self.config)
+                self._log("option_seller_selected_source", {"source": "cache", "count": len(selected)})
             self._log("option_seller_selected_markets", {"count": len(selected)})
             if not selected:
                 self._log("option_seller_no_markets")
