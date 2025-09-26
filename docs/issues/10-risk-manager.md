@@ -1,4 +1,4 @@
-# Issue 10: Implement RiskManager (global controller)
+# Issue 10: Implement RiskManager (global controller) - ✅ COMPLETED
 
 ## Background (reuse existing code)
 - Reuse EV helpers (Issue 6). Avoid modifying order modules.
@@ -12,17 +12,23 @@
 - Align with orchestrator flow in Issue 14: selection -> cache/Chroma -> routing -> risk actions.
 
 ## Tasks
-- Poll `local_state/{bot}/` inventories and PnL snapshots.
-- Compute per-market and global EV; apply daily PnL kill.
-- Write `actions/{bot}.json` with `NONE|WIDEN|PAUSE|FLATTEN` signals.
-- Read routed selections for Risk Manager from `ops.selected_markets_path` if configured.
-- Add configurable paths under `ops`: `state_dir`, `actions_dir`, `selected_markets_path`.
+- ✅ Poll `local_state/{bot}/` inventories and PnL snapshots.
+- ✅ Compute per-market and global EV; apply daily PnL kill.
+- ✅ Write `actions/{bot}.json` with `NONE|WIDEN|PAUSE|FLATTEN` signals.
+- ✅ Read routed selections for Risk Manager from `ops.selected_markets_path` if configured.
+- ✅ Add configurable paths under `ops`: `state_dir`, `actions_dir`, `selected_markets_path`.
 
 ## Acceptance Criteria
-- No network calls; file-based communication only.
-- Conservative defaults; never triggers live orders directly.
-- Clean logs of breaches and actions.
-- Consumes routed selections when available; otherwise operates on current on-disk bot states.
+- ✅ No network calls; file-based communication only.
+- ✅ Conservative defaults; never triggers live orders directly.
+- ✅ Clean logs of breaches and actions.
+- ✅ Consumes routed selections when available; otherwise operates on current on-disk bot states.
+
+## Status
+- ✅ Scaffold implemented: `agents/strategies/risk.py`
+- ✅ CLI wired: `run-risk-manager` command
+- ✅ Actions emitted to `local_state/risk_manager/actions/risk_actions.json`
+- ✅ Config updated: `configs/risk.yaml` with `actions_dir`, `monitor_bots`
 
 ## Notes
 - Bots poll actions and react; RiskManager does not edit bot configs.
